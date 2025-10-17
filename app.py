@@ -6,14 +6,12 @@ st.set_page_config(page_title="Anulações e Reforços", layout="wide")
 
 st.title("Anulações e Reforços - Visualizador")
 
-st.write("📋 Cole os dados da planilha abaixo (separados por tabulação):")
-
-# Colunas originais esperadas
-colunas_originais = [
-    "Solicitação", "Original", "Empenho", "UG Exec", "UG Cred", "LOCAL ATUAL",
-    "I/Lotação", "N.D.", "Sb", "Status", "CODEMP", "Fornecedor",
-    "Dt Solicitação", "Anulação_Reforço", "Valor", "Cancelar"
-]
+# Cabeçalho com campo de colagem à esquerda e assinatura à direita
+col1, col2 = st.columns([4, 1])
+with col1:
+    st.write("📋 Cole os dados da planilha abaixo (separados por tabulação):")
+with col2:
+    st.markdown("<div style='text-align: right; font-size: 14px;'>Desenvolvedor: <b>2S SAD Andrade</b></div>", unsafe_allow_html=True)
 
 # Área de colagem expandida
 dados_colados = st.text_area("Cole aqui os dados", height=600)
@@ -22,7 +20,11 @@ if dados_colados:
     try:
         # Leitura dos dados colados
         df = pd.read_csv(io.StringIO(dados_colados), sep="\t", header=None)
-        df.columns = colunas_originais[:df.shape[1]]
+        df.columns = [
+            "Solicitação", "Original", "Empenho", "UG Exec", "UG Cred", "LOCAL ATUAL",
+            "I/Lotação", "N.D.", "Sb", "Status", "CODEMP", "Fornecedor",
+            "Dt Solicitação", "Anulação_Reforço", "Valor", "Cancelar"
+        ][:df.shape[1]]
 
         # Seleciona colunas desejadas
         df_filtrado = df[[
