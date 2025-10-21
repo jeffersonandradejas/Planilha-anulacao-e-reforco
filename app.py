@@ -52,14 +52,14 @@ if dados_colados:
         )
         df_filtrado["Valor"] = pd.to_numeric(df_filtrado["Valor"], errors="coerce")
 
-        # ✅ Formata como texto com vírgula decimal e ponto de milhar
+        # Formata como texto com vírgula decimal e ponto de milhar
         df_filtrado["Valor"] = df_filtrado["Valor"].apply(
             lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if pd.notnull(x) else ""
         )
 
-        # Exibição da tabela formatada
+        # Exibição da tabela formatada com st.table
         st.subheader("📊 Tabela formatada:")
-        st.dataframe(df_filtrado, use_container_width=True, height=600)
+        st.table(df_filtrado)
 
         # Botão para download
         csv = df_filtrado.to_csv(index=False).encode('utf-8')
