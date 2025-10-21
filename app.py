@@ -47,15 +47,17 @@ if dados_colados:
         df_filtrado["Valor"] = (
             df_filtrado["Valor"]
             .astype(str)
-            .str.replace(".", "", regex=False)
-            .str.replace(",", ".", regex=False)
+            .str.replace(".", "", regex=False)  # Remove ponto de milhar
+            .str.replace(",", ".", regex=False)  # Converte vírgula decimal para ponto
         )
         df_filtrado["Valor"] = pd.to_numeric(df_filtrado["Valor"], errors="coerce")
+
+        # ✅ Formata como texto com vírgula decimal e ponto de milhar
         df_filtrado["Valor"] = df_filtrado["Valor"].apply(
             lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if pd.notnull(x) else ""
         )
 
-        # Exibição da tabela expandida
+        # Exibição da tabela formatada
         st.subheader("📊 Tabela formatada:")
         st.dataframe(df_filtrado, use_container_width=True, height=600)
 
