@@ -2,84 +2,68 @@ import streamlit as st
 import pandas as pd
 import io
 
-st.set_page_config(page_title="Solicitação de Empenho - Visualizador", layout="wide")
+st.set_page_config(page_title="Anulações e Reforços", layout="wide")
 
-st.title("📑 Solicitação de Empenho - Visualizador")
+st.title("📑 Anulações e Reforços - Visualizador")
 
-# Cabeçalho com campo de colagem à esquerda e nome do desenvolvedor à direita
+# Cabeçalho com campo de colagem à esquerda e assinatura à direita
 col1, col2 = st.columns([4, 1])
 with col1:
     st.markdown("### 📋 Cole os dados da planilha abaixo (separados por tabulação):")
 with col2:
     st.markdown("<div style='text-align: right; font-size: 14px;'>Desenvolvedor: <b>2S SAD Andrade</b></div>", unsafe_allow_html=True)
 
-# Área de colagem
-dados_colados = st.text_area("Cole aqui os dados", height=700)
+# Área de colagem expandida
+dados_colados = st.text_area("Cole aqui os dados", height=600)
 
 if dados_colados:
     try:
-        # Remove espaços em branco no início das linhas
-        linhas = [linha.lstrip() for linha in dados_colados.strip().split("\n")]
-        dados_limpos = "\n".join(linhas)
+        # Leitura dos dados colados
+        df = pd.read_csv(io.StringIO(dados_colados), sep="\t", header=None)
+        df.columns = [
+            "Solicitação", "Original", "Empenho", "UG Exec", "UG Cred", "LOCAL ATUAL",
+            "I/Lotação", "N.D.", "Sb", "Status", "CODEMP", "Fornecedor",
+            "Dt Solicitação", "Anulação_Reforço", "Valor", "Cancelar"
+        ][:df.shape[1]]
 
-        # Lê os dados colados
-        df = pd.read_csv(io.StringIO(dados_limpos), sep="\t", header=None, engine="python", on_bad_lines="skip")
-        df.columns = [f"col_{i}" for i in range(df.shape[1])]
+        # Seleciona colunas desejadas
+        df_filtrado = df[[
+            "Solicitação", "Original", "Empenho", "UG Cred",
+            "I/Lotação", "Fornecedor", "Anulação_Reforço", "Valor"
+        ]].copy()
 
-        # Mapeamento atualizado
-        colunas_mapeadas = {
-            "SOL": "col_0",
-            "APOIADA": "col_2",
-            "IL": "col_4",
-            "FORNECEDOR": "col_9",
-            "PAG": "col_10",
-            "PREGÃO": "col_11",
-            "VALOR": "col_14",
-            "DATA": "col_13"
-        }
+        # Insere coluna "Status" em branco após "I/Lotação"
+        idx = df_filtrado.columns.get_loc("I/Lotação") + 1
+        df_filtrado.insert(idx, "Status", "")
 
-        # Extrai colunas existentes
-        colunas_existentes = [v for v in colunas_mapeadas.values() if v in df.columns]
-        df_filtrado = df[colunas_existentes].copy()
-        df_filtrado.columns = [k for k, v in colunas_mapeadas.items() if v in df.columns]
+        # Reordena conforme solicitado
+        ordem_final = [
+            "Solicitação", "UG Cred", "I/Lotação", "Empenho", "Original",
+            "Status", "Fornecedor", "Valor", "Anulação_Reforço"
+        ]
+        df_filtrado = df_filtrado[ordem_final]
 
-        # Insere colunas em branco após IL
-        for i, nova_coluna in enumerate(["EMPENHO", "ID", "STATUS"]):
-            df_filtrado.insert(3 + i, nova_coluna, "")
+        # Conversão e formatação de valores no padrão brasileiro (sem ponto de milhar)
+        df_filtrado["Valor"] = (
+            df_filtrado["Valor"]
+            .astype(str)
+            .str.replace(".", "", regex=False)  # Remove ponto de milhar
+            .str.replace(",", ".", regex=False)  # Converte vírgula decimal para ponto
+        )
+        df_filtrado["Valor"] = pd.to_numeric(df_filtrado["Valor"], errors="coerce")
 
-        # Formata VALOR no padrão brasileiro
-        if "VALOR" in df_filtrado.columns:
-            df_filtrado["VALOR"] = (
-                df_filtrado["VALOR"]
-                .astype(str)
-                .str.replace(".", "", regex=False)
-                .str.replace(",", ".", regex=False)
-            )
-            df_filtrado["VALOR"] = pd.to_numeric(df_filtrado["VALOR"], errors="coerce")
-            df_filtrado["VALOR"] = df_filtrado["VALOR"].apply(
-                lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if pd.notnull(x) else ""
-            )
+        # ✅ Formata como R$ 1234,56 (sem ponto de milhar)
+        df_filtrado["Valor"] = df_filtrado["Valor"].apply(
+            lambda x: f"R$ {x:.2f}".replace(".", ",") if pd.notnull(x) else ""
+        )
 
-        # Formata DATA
-        if "DATA" in df_filtrado.columns:
-            df_filtrado["DATA"] = pd.to_datetime(df_filtrado["DATA"], dayfirst=True, errors="coerce")
-            df_filtrado["DATA"] = df_filtrado["DATA"].dt.strftime("%d/%m/%Y")
-
-        # Reordena para colocar VALOR antes de DATA
-        colunas_ordenadas = df_filtrado.columns.tolist()
-        if "VALOR" in colunas_ordenadas and "DATA" in colunas_ordenadas:
-            colunas_ordenadas.remove("VALOR")
-            idx_data = colunas_ordenadas.index("DATA")
-            colunas_ordenadas.insert(idx_data, "VALOR")
-            df_filtrado = df_filtrado[colunas_ordenadas]
-
-        # Exibição com st.table para preservar formatação
+        # Exibição da tabela formatada com st.table
         st.subheader("📊 Tabela formatada:")
         st.table(df_filtrado)
 
         # Botão para download
         csv = df_filtrado.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Baixar como CSV", csv, "dados_formatados.csv", "text/csv")
+        st.download_button("📥 Baixar como CSV", csv, "anulacoes_reforcos.csv", "text/csv")
 
     except Exception as e:
         st.error(f"❌ Erro ao processar os dados: {e}")
