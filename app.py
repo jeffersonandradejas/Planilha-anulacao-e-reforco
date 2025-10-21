@@ -43,10 +43,16 @@ if dados_colados:
         ]
         df_filtrado = df_filtrado[ordem_final]
 
-        # Conversão de valores
-        df_filtrado["Valor"] = pd.to_numeric(
-            df_filtrado["Valor"].astype(str).str.replace(".", "").str.replace(",", "."),
-            errors="coerce"
+        # Conversão e formatação de valores no padrão brasileiro
+        df_filtrado["Valor"] = (
+            df_filtrado["Valor"]
+            .astype(str)
+            .str.replace(".", "", regex=False)
+            .str.replace(",", ".", regex=False)
+        )
+        df_filtrado["Valor"] = pd.to_numeric(df_filtrado["Valor"], errors="coerce")
+        df_filtrado["Valor"] = df_filtrado["Valor"].apply(
+            lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if pd.notnull(x) else ""
         )
 
         # Exibição da tabela expandida
